@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>前端选品台 · 原型 v1</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f6f7f9;
+    --text: #111111;
+    --muted: #666666;
+    --primary: #111111;
+    --primary-text: #ffffff;
+    --accent: #6b6b6b;
+    --border: #e5e7eb;
+    --radius: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+    --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --ui-bg: #fafafa;
+    --ui-panel: #ffffff;
+    --ui-border: #e6e6e6;
+    --ui-text: #1a1a1a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    height: 100vh;
+    overflow: hidden;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    height: 100vh;
+  }
+  .panel {
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .panel.right { border-right: none; border-left: 1px solid var(--ui-border); }
+  .panel h2 {
+    font-size: 13px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ui-text);
+    opacity: .55;
+    margin: 4px 0 12px;
+  }
+  .brand {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .brand .tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    background: #111;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    vertical-align: 2px;
+  }
+  .sub { font-size: 12px; color: #888; margin-bottom: 16px; line-height: 1.5; }
+
+  /* 模块库卡片 */
+  .lib-grid { display: flex; flex-direction: column; gap: 8px; }
+  .lib-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: #fff;
+    cursor: grab;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    user-select: none;
+  }
+  .lib-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    border-color: #c9c9c9;
+  }
+  .lib-card:active { cursor: grabbing; }
+  .lib-card.dragging { opacity: .45; }
+  .lib-card .emoji {
+    width: 38px; height: 38px;
+    display: grid; place-items: center;
+    font-size: 20px;
+    background: #f4f4f5;
+    border-radius: 8px;
+    flex: none;
+  }
+  .lib-card .meta { min-width: 0; }
+  .lib-card .meta .name { font-size: 13px; font-weight: 600; }
+  .lib-card .meta .tech { font-size: 11px; color: #999; margin-top: 1px; }
+  .lib-card .meta .desc { font-size: 11px; color: #aaa; margin-top: 3px; line-height: 1.35; }
+
+  /* 画布 */
+  .canvas-wrap {
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    background: #ececee;
+  }
+  .canvas {
+    width: 100%;
+    max-width: 860px;
+    min-height: 640px;
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.16);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    font-family: var(--font);
+  }
+  .canvas.drag-over { outline: 3px dashed var(--primary); outline-offset: -8px; }
+  .canvas-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    padding: 40px;
+    text-align: center;
+  }
+  .canvas-empty .big { font-size: 40px; }
+  .canvas-empty .t { font-size: 15px; font-weight: 600; color: var(--text); }
+  .canvas-empty .s { font-size: 13px; max-width: 320px; line-height: 1.6; }
+
+  /* 画布内的模块块 */
+  .sec { position: relative; }
+  .sec .toolbar {
+    position: absolute;
+    top: 8px; right: 8px;
+    display: none;
+    gap: 4px;
+    z-index: 5;
+  }
+  .sec:hover .toolbar { display: flex; }
+  .sec .toolbar button {
+    border: 1px solid var(--ui-border);
+    background: #fff;
+    border-radius: 6px;
+    width: 24px; height: 24px;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    color: #555;
+  }
+  .sec .toolbar button:hover { background: #f2f2f2; }
+  .sec .toolbar button.del:hover { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+  .sec .toolbar select {
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    font-size: 12px;
+    height: 24px;
+    background: #fff;
+    color: #555;
+  }
+  .sec.drop-in { animation: dropIn .35s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes dropIn {
+    0% { transform: translateY(-18px) scale(.97); opacity: 0; }
+    60% { transform: translateY(3px) scale(1); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  /* 模块内部样式（用 CSS 变量，随主题换肤） */
+  .mod { padding: 56px 48px; }
+  .mod h1, .mod h2 { font-weight: 800; letter-spacing: -.02em; color: var(--text); }
+  .mod p { color: var(--muted); line-height: 1.7; }
+  .btn {
+    display: inline-block;
+    border: none;
+    background: var(--primary);
+    color: var(--primary-text);
+    padding: 11px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+  }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card .ic { font-size: 22px; margin-bottom: 10px; }
+  .card h3 { font-size: 15px; margin-bottom: 6px; color: var(--text); }
+  .card p { font-size: 13px; color: var(--muted); }
+
+  .mod-navbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .mod-navbar .logo { font-weight: 800; font-size: 15px; color: var(--text); }
+  .mod-navbar nav { display: flex; gap: 22px; }
+  .mod-navbar nav a { font-size: 13px; color: var(--muted); text-decoration: none; cursor: pointer; }
+  .mod-navbar nav a:hover { color: var(--text); }
+  .mod-navbar .btn { padding: 8px 16px; font-size: 13px; }
+
+  .mod-hero { text-align: center; padding-top: 88px; padding-bottom: 88px; }
+  .mod-hero h1 { font-size: 42px; line-height: 1.15; margin-bottom: 16px; }
+  .mod-hero p { font-size: 16px; max-width: 520px; margin: 0 auto 28px; }
+  .mod-hero .hero-cta { display: flex; gap: 12px; justify-content: center; }
+
+  .mod-cta { text-align: center; }
+  .mod-cta h2 { font-size: 30px; margin-bottom: 18px; }
+
+  .mod-footer { padding: 40px 48px; background: var(--surface); border-top: 1px solid var(--border); }
+  .mod-footer .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .mod-footer .logo { font-weight: 800; color: var(--text); }
+  .mod-footer .links { display: flex; gap: 18px; }
+  .mod-footer .links a { font-size: 13px; color: var(--muted); text-decoration: none; cursor: pointer; }
+  .mod-footer p { font-size: 12px; color: var(--muted); }
+
+  .mod-pricing .price { font-size: 30px; font-weight: 800; color: var(--text); margin: 10px 0 4px; }
+  .mod-pricing .price span { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .mod-pricing .feat { font-size: 13px; color: var(--muted); line-height: 1.9; }
+  .mod-pricing .card.hot { border-color: var(--primary); }
+  .mod-pricing .card h3 { font-size: 16px; }
+
+  .mod-gallery .tile {
+    height: 110px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    opacity: .9;
+    display: grid; place-items: center;
+    color: var(--primary-text);
+    font-size: 24px;
+  }
+
+  .mod-faq .faq-list { margin-top: 24px; }
+  .mod-faq .faq-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; background: var(--surface); overflow: hidden; }
+  .mod-faq .faq-q {
+    width: 100%; text-align: left;
+    background: none; border: none;
+    padding: 15px 18px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font);
+  }
+  .mod-faq .faq-q::after { content: "＋"; color: var(--muted); }
+  .mod-faq .faq-item.open .faq-q::after { content: "－"; }
+  .mod-faq .faq-a {
+    max-height: 0; overflow: hidden;
+    transition: max-height .3s ease;
+    padding: 0 18px;
+    font-size: 13px; color: var(--muted); line-height: 1.7;
+  }
+  .mod-faq .faq-item.open .faq-a { max-height: 200px; padding: 0 18px 16px; }
+  .mod-faq .drawer-hint { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+  /* 抽屉变体 */
+  .drawer-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 50;
+    display: none;
+  }
+  .drawer-overlay.show { display: block; }
+  .drawer-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 320px; max-width: 80vw;
+    background: #fff; color: #111;
+    box-shadow: -10px 0 40px rgba(0,0,0,.2);
+    padding: 28px 24px;
+    z-index: 60;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.2,.8,.2,1);
+    font-family: var(--font);
+  }
+  .drawer-panel.show { transform: translateX(0); }
+  .drawer-panel h3 { margin-bottom: 12px; font-size: 16px; }
+  .drawer-panel p { font-size: 14px; line-height: 1.7; color: #555; }
+  .drawer-panel .close {
+    position: absolute; top: 16px; right: 16px;
+    border: none; background: #f2f2f2;
+    width: 28px; height: 28px; border-radius: 6px;
+    cursor: pointer; font-size: 14px;
+  }
+
+  /* 右栏控件 */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: #777; margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: var(--font);
+    color: var(--ui-text);
+    background: #fff;
+  }
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme-btn {
+    border: 2px solid var(--ui-border);
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+    background: #fff;
+    font-family: var(--font);
+  }
+  .theme-btn.active { border-color: #111; }
+  .theme-btn .sw { display: flex; gap: 4px; margin-bottom: 6px; }
+  .theme-btn .sw span { width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,.08); }
+  .theme-btn .nm { font-size: 12px; font-weight: 600; }
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    background: #111;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    margin-top: 4px;
+  }
+  .btn-primary:hover { background: #2a2a2a; }
+  .btn-secondary {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--ui-border);
+    background: #fff;
+    color: var(--ui-text);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    margin-top: 8px;
+  }
+  .hint { font-size: 11px; color: #aaa; line-height: 1.6; margin-top: 10px; }
+
+  /* 导出弹窗 */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal.show { display: flex; }
+  .modal-box {
+    width: min(720px, 92vw);
+    max-height: 84vh;
+    background: #fff;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .modal-head h3 { font-size: 15px; }
+  .modal-head .close { border: none; background: none; font-size: 20px; cursor: pointer; color: #777; }
+  .modal-tabs { display: flex; gap: 4px; padding: 10px 16px 0; }
+  .modal-tabs button {
+    border: 1px solid var(--ui-border);
+    background: #fff;
+    padding: 7px 14px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font);
+  }
+  .modal-tabs button.active { background: #111; color: #fff; border-color: #111; }
+  .modal-body { flex: 1; overflow: auto; padding: 16px 20px; }
+  .modal-body textarea {
+    width: 100%;
+    min-height: 320px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    resize: vertical;
+    color: #222;
+  }
+  .modal-foot { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--ui-border); }
+  .modal-foot button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--ui-border);
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+  }
+  .modal-foot button.primary { background: #111; color: #fff; border-color: #111; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 左栏：模块库 -->
+  <aside class="panel">
+    <div class="brand">前端选品台 <span class="tag">原型 v1</span></div>
+    <div class="sub">把模块拖进右侧画布，像配车一样搭页面。</div>
+    <h2>页面模块</h2>
+    <div class="lib-grid" id="libGrid"></div>
+  </aside>
+
+  <!-- 中栏：画布 -->
+  <main class="canvas-wrap" id="canvasWrap">
+    <div class="canvas" id="canvas"></div>
+  </main>
+
+  <!-- 右栏：配置 -->
+  <aside class="panel right">
+    <h2>项目信息</h2>
+    <div class="field">
+      <label>项目名称</label>
+      <input id="projName" type="text" placeholder="例如：一家面包房的官网" value="我的网站">
+    </div>
+    <div class="field">
+      <label>一句话用途</label>
+      <textarea id="projPurpose" rows="2" placeholder="这个网站是给谁用、要达到什么目的">展示产品与品牌，引导访客联系下单。</textarea>
+    </div>
+    <div class="field">
+      <label>技术栈</label>
+      <select id="stack">
+        <option value="纯 HTML + CSS + JS">纯 HTML + CSS + JS</option>
+        <option value="React + Tailwind">React + Tailwind</option>
+        <option value="Vue + Nuxt">Vue + Nuxt</option>
+        <option value="Next.js + Tailwind">Next.js + Tailwind</option>
+      </select>
+    </div>
+
+    <h2>主题风格</h2>
+    <div class="theme-grid" id="themeGrid"></div>
+
+    <h2 style="margin-top:18px;">导出配置单</h2>
+    <button class="btn-primary" onclick="openExport()">生成给 AI 的配置单</button>
+    <div class="hint">
+      配置单会被交给 Codex 等 AI 作为约束上下文：AI 只按单组装已选模块与风格，减少猜测与 token 消耗。
+    </div>
+  </aside>
+</div>
+
+<!-- 抽屉（FAQ drawer 变体用） -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer-panel" id="drawerPanel">
+  <button class="close" id="drawerClose">✕</button>
+  <h3 id="drawerTitle"></h3>
+  <p id="drawerBody"></p>
+</div>
+
+<!-- 导出弹窗 -->
+<div class="modal" id="exportModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>给 AI 的配置单</h3>
+      <button class="close" onclick="closeExport()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button id="tabMd" class="active" onclick="switchTab('md')">spec.md（人机可读）</button>
+      <button id="tabJson" onclick="switchTab('json')">spec.json（机器可读）</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="exportText" readonly></textarea>
+    </div>
+    <div class="modal-foot">
+      <button onclick="copyExport()">复制</button>
+      <button class="primary" onclick="downloadExport()">下载文件</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== 数据：模块库 =====================
+const MODULES = [
+  {
+    id: 'navbar', name: '导航栏', tech: 'Navbar', emoji: '🧭',
+    desc: '页面顶部的菜单，放 Logo 和跳转链接',
+    variants: [ { id: 'default', label: '标准' } ],
+    render() {
+      return `<header class="mod-navbar">
+        <span class="logo">◈ Logo</span>
+        <nav><a>首页</a><a>产品</a><a>关于</a><a>联系</a></nav>
+        <button class="btn">开始</button>
+      </header>`;
+    }
+  },
+  {
+    id: 'hero', name: '主视觉', tech: 'Hero', emoji: '🚀',
+    desc: '首屏的大标题和行动按钮，定第一印象',
+    variants: [ { id: 'default', label: '居中' } ],
+    render() {
+      return `<section class="mod mod-hero">
+        <h1>一句打动人心的主标题</h1>
+        <p>这里是副标题，用一句话说清楚你的产品能为访客带来什么价值。</p>
+        <div class="hero-cta">
+          <button class="btn">立即开始</button>
+          <button class="btn ghost">了解更多</button>
+        </div>
+      </section>`;
+    }
+  },
+  {
+    id: 'features', name: '特性', tech: 'Features', emoji: '✨',
+    desc: '三张卡片，展示产品的核心卖点',
+    variants: [ { id: 'default', label: '三列卡片' } ],
+    render() {
+      return `<section class="mod">
+        <h2>核心特性</h2>
+        <div class="grid3">
+          <div class="card"><div class="ic">⚡</div><h3>快速上手</h3><p>开箱即用，五分钟完成部署。</p></div>
+          <div class="card"><div class="ic">🔒</div><h3>安全可靠</h3><p>数据加密，权限分级，稳定运行。</p></div>
+          <div class="card"><div class="ic">📈</div><h3>持续增长</h3><p>内置分析，驱动业务不断增长。</p></div>
+        </div>
+      </section>`;
+    }
+  },
+  {
+    id: 'gallery', name: '画廊', tech: 'Gallery', emoji: '🖼️',
+    desc: '展示作品、案例或产品图片的网格',
+    variants: [ { id: 'default', label: '六宫格' } ],
+    render() {
+      return `<section class="mod">
+        <h2>作品展示</h2>
+        <div class="grid3 mod-gallery">
+          <div class="tile">①</div><div class="tile">②</div><div class="tile">③</div>
+          <div class="tile">④</div><div class="tile">⑤</div><div class="tile">⑥</div>
+        </div>
+      </section>`;
+    }
+  },
+  {
+    id: 'pricing', name: '价格表', tech: 'Pricing', emoji: '💳',
+    desc: '三档套餐对比，引导用户选择付费方案',
+    variants: [ { id: 'default', label: '三档对比' } ],
+    render() {
+      return `<section class="mod mod-pricing">
+        <h2>定价方案</h2>
+        <div class="grid3">
+          <div class="card"><h3>基础版</h3><div class="price">¥0<span> / 月</span></div><div class="feat">核心功能<br>1 个项目<br>社区支持</div></div>
+          <div class="card hot"><h3>专业版</h3><div class="price">¥99<span> / 月</span></div><div class="feat">全部功能<br>无限项目<br>优先支持</div></div>
+          <div class="card"><h3>企业版</h3><div class="price">定制<span></span></div><div class="feat">专属定制<br>专属支持<br>SLA 保障</div></div>
+        </div>
+      </section>`;
+    }
+  },
+  {
+    id: 'faq', name: '常见问题', tech: 'FAQ', emoji: '❓',
+    desc: '问答区，可切换「手风琴展开」或「抽屉滑出」',
+    variants: [
+      { id: 'accordion', label: '手风琴展开' },
+      { id: 'drawer', label: '抽屉滑出' }
+    ],
+    render(variant) {
+      const items = [
+        { q: '这个产品适合我吗？', a: '如果你需要一个快速搭建、易于维护的网站，它非常适合你。' },
+        { q: '可以退款吗？', a: '支持 7 天无理由退款，联系客服即可办理。' },
+        { q: '支持定制吗？', a: '企业版支持深度定制，可按需求调整功能和视觉。' }
+      ];
+      const list = items.map((it, i) => `
+        <div class="faq-item" data-q="${it.q}" data-a="${it.a}">
+          <button class="faq-q">${it.q}</button>
+          <div class="faq-a">${it.a}</div>
+        </div>`).join('');
+      const hint = variant === 'drawer' ? '<div class="drawer-hint">点击问题，答案会从右侧像抽屉一样滑出来</div>' : '';
+      return `<section class="mod mod-faq">
+        <h2>常见问题</h2>
+        <div class="faq-list">${list}</div>${hint}
+      </section>`;
+    }
+  },
+  {
+    id: 'cta', name: '行动号召', tech: 'CTA', emoji: '📣',
+    desc: '页面收尾的强引导，促使访客采取行动',
+    variants: [ { id: 'default', label: '居中号召' } ],
+    render() {
+      return `<section class="mod mod-cta">
+        <h2>准备好开始了吗？</h2>
+        <button class="btn">联系我们</button>
+      </section>`;
+    }
+  },
+  {
+    id: 'footer', name: '页脚', tech: 'Footer', emoji: '🦶',
+    desc: '页面底部的版权、链接和备案信息',
+    variants: [ { id: 'default', label: '标准页脚' } ],
+    render() {
+      return `<footer class="mod-footer">
+        <div class="top"><span class="logo">◈ Logo</span>
+          <div class="links"><a>关于</a><a>隐私</a><a>条款</a><a>联系</a></div></div>
+        <p>© 2026 我的网站 · 保留所有权利</p>
+      </footer>`;
+    }
+  }
+];
+
+// ===================== 数据：主题 =====================
+const THEMES = [
+  { id: 'minimal', name: '极简', swatch: ['#ffffff', '#111111', '#e5e7eb'],
+    css: { '--bg': '#ffffff', '--surface': '#f6f7f9', '--text': '#111111', '--muted': '#666666',
+           '--primary': '#111111', '--primary-text': '#ffffff', '--accent': '#8b8b8b',
+           '--border': '#e5e7eb', '--radius': '6px', '--shadow': '0 1px 3px rgba(0,0,0,.08)' } },
+  { id: 'tech', name: '科技蓝', swatch: ['#eef2ff', '#4f46e5', '#a855f7'],
+    css: { '--bg': '#eef2ff', '--surface': '#ffffff', '--text': '#0f172a', '--muted': '#475569',
+           '--primary': '#4f46e5', '--primary-text': '#ffffff', '--accent': '#a855f7',
+           '--border': '#dbeafe', '--radius': '12px', '--shadow': '0 10px 30px rgba(79,70,229,.14)' } },
+  { id: 'dark', name: '暗黑', swatch: ['#0b0f1a', '#22d3ee', '#a855f7'],
+    css: { '--bg': '#0b0f1a', '--surface': '#151b2b', '--text': '#e6e9f2', '--muted': '#8b93a7',
+           '--primary': '#22d3ee', '--primary-text': '#06232b', '--accent': '#a855f7',
+           '--border': '#232b3d', '--radius': '12px', '--shadow': '0 10px 30px rgba(0,0,0,.45)' } },
+  { id: 'glass', name: '玻璃拟态', swatch: ['#e0e7ff', '#fce7f3', '#fef3c7'],
+    css: { '--bg': 'linear-gradient(135deg,#e0e7ff,#fce7f3,#fef3c7)', '--surface': 'rgba(255,255,255,.55)',
+           '--text': '#1a1a2e', '--muted': '#5a5a7a', '--primary': '#6d5dfc', '--primary-text': '#ffffff',
+           '--accent': '#f472b6', '--border': 'rgba(255,255,255,.7)', '--radius': '18px',
+           '--shadow': '0 12px 34px rgba(80,70,180,.18)' } }
+];
+
+// ===================== 状态 =====================
+let state = {
+  projectName: '我的网站',
+  purpose: '展示产品与品牌，引导访客联系下单。',
+  stack: '纯 HTML + CSS + JS',
+  themeId: 'minimal',
+  sections: []   // [{ moduleId, variantId }]
+};
+
+// ===================== 初始化 =====================
+const libGrid = document.getElementById('libGrid');
+const canvas = document.getElementById('canvas');
+const canvasWrap = document.getElementById('canvasWrap');
+const themeGrid = document.getElementById('themeGrid');
+
+function init() {
+  // 渲染模块库
+  MODULES.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+    card.draggable = true;
+    card.dataset.module = m.id;
+    card.innerHTML = `
+      <div class="emoji">${m.emoji}</div>
+      <div class="meta">
+        <div class="name">${m.name}</div>
+        <div class="tech">${m.tech}</div>
+        <div class="desc">${m.desc}</div>
+      </div>`;
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', m.id);
+      e.dataTransfer.effectAllowed = 'copy';
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    libGrid.appendChild(card);
+  });
+
+  // 渲染主题
+  THEMES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'theme-btn' + (t.id === state.themeId ? ' active' : '');
+    btn.dataset.theme = t.id;
+    btn.innerHTML = `
+      <div class="sw">${t.swatch.map(c => `<span style="background:${c}"></span>`).join('')}</div>
+      <div class="nm">${t.name}</div>`;
+    btn.addEventListener('click', () => {
+      state.themeId = t.id;
+      applyTheme(t.id);
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === t.id));
+    });
+    themeGrid.appendChild(btn);
+  });
+
+  // 画布拖放
+  canvas.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    canvas.classList.add('drag-over');
+  });
+  canvas.addEventListener('dragleave', () => canvas.classList.remove('drag-over'));
+  canvas.addEventListener('drop', e => {
+    e.preventDefault();
+    canvas.classList.remove('drag-over');
+    const moduleId = e.dataTransfer.getData('text/plain');
+    const mod = MODULES.find(m => m.id === moduleId);
+    if (!mod) return;
+    state.sections.push({ moduleId, variantId: mod.variants[0].id });
+    renderCanvas(true);
+  });
+
+  // FAQ 交互（事件委托）
+  canvas.addEventListener('click', e => {
+    const q = e.target.closest('.faq-q');
+    if (q) handleFaqClick(q);
+  });
+
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+  // 右栏输入
+  document.getElementById('projName').addEventListener('input', e => state.projectName = e.target.value);
+  document.getElementById('projPurpose').addEventListener('input', e => state.purpose = e.target.value);
+  document.getElementById('stack').addEventListener('change', e => state.stack = e.target.value);
+
+  applyTheme(state.themeId);
+  renderCanvas();
+}
+
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id);
+  if (!t) return;
+  const root = document.documentElement;
+  Object.entries(t.css).forEach(([k, v]) => root.style.setProperty(k, v));
+}
+
+// ===================== 渲染画布 =====================
+function renderCanvas(animateLast = false) {
+  if (state.sections.length === 0) {
+    canvas.innerHTML = `<div class="canvas-empty">
+      <div class="big">🧩</div>
+      <div class="t">画布还是空的</div>
+      <div class="s">从左侧拖一个模块进来，它会在这里落地生根。拖入后可上移、下移、删除，或切换它的风格变体。</div>
+    </div>`;
+    return;
+  }
+  let html = '';
+  state.sections.forEach((sec, i) => {
+    const mod = MODULES.find(m => m.id === sec.moduleId);
+    if (!mod) return;
+    const variantSel = mod.variants.length > 1
+      ? `<select onchange="changeVariant(${i}, this.value)">${mod.variants.map(v =>
+          `<option value="${v.id}" ${v.id === sec.variantId ? 'selected' : ''}>${v.label}</option>`).join('')}</select>`
+      : '';
+    html += `<div class="sec ${animateLast && i === state.sections.length - 1 ? 'drop-in' : ''}">
+      <div class="toolbar">
+        <button title="上移" onclick="moveSection(${i}, -1)">↑</button>
+        <button title="下移" onclick="moveSection(${i}, 1)">↓</button>
+        ${variantSel}
+        <button title="删除" class="del" onclick="removeSection(${i})">✕</button>
+      </div>
+      ${mod.render(sec.variantId)}
+    </div>`;
+  });
+  canvas.innerHTML = html;
+}
+
+function moveSection(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= state.sections.length) return;
+  [state.sections[i], state.sections[j]] = [state.sections[j], state.sections[i]];
+  renderCanvas();
+}
+
+function removeSection(i) {
+  state.sections.splice(i, 1);
+  renderCanvas();
+}
+
+function changeVariant(i, variantId) {
+  state.sections[i].variantId = variantId;
+  renderCanvas();
+}
+
+// ===================== FAQ 交互 =====================
+function handleFaqClick(q) {
+  const item = q.closest('.faq-item');
+  const sectionIndex = [...canvas.querySelectorAll('.sec')].findIndex(s => s.contains(item));
+  if (sectionIndex < 0) return;
+  const variant = state.sections[sectionIndex].variantId;
+  const title = item.dataset.q;
+  const body = item.dataset.a;
+  if (variant === 'drawer') {
+    document.getElementById('drawerTitle').textContent = title;
+    document.getElementById('drawerBody').textContent = body;
+    document.getElementById('drawerOverlay').classList.add('show');
+    document.getElementById('drawerPanel').classList.add('show');
+  } else {
+    item.classList.toggle('open');
+  }
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('show');
+  document.getElementById('drawerPanel').classList.remove('show');
+}
+
+// ===================== 导出 =====================
+let exportMode = 'md';
+
+function buildSpec() {
+  const modName = id => { const m = MODULES.find(x => x.id === id); return m ? m.name : id; };
+  const modTech = id => { const m = MODULES.find(x => x.id === id); return m ? m.tech : id; };
+  const variantLabel = sec => {
+    const m = MODULES.find(x => x.id === sec.moduleId);
+    const v = m && m.variants.find(v => v.id === sec.variantId);
+    return v ? v.label : sec.variantId;
+  };
+
+  const json = {
+    $schema: "https://example.com/site-spec.schema.json",
+    site: {
+      name: state.projectName,
+      purpose: state.purpose,
+      stack: state.stack,
+      theme: state.themeId
+    },
+    pages: [
+      {
+        title: "home",
+        slug: "home",
+        purpose: state.purpose,
+        sections: state.sections.map(sec => ({
+          module: sec.moduleId,
+          variant: sec.variantId
+        }))
+      }
+    ]
+  };
+
+  const lines = [];
+  lines.push('# 前端配置单');
+  lines.push('');
+  lines.push('> 本单由「前端选品台」生成，交给 AI（Codex）作为约束上下文：只按单组装已选模块与风格。');
+  lines.push('');
+  lines.push('- 项目名称：' + state.projectName);
+  lines.push('- 一句话用途：' + state.purpose);
+  lines.push('- 技术栈：' + state.stack);
+  lines.push('- 主题风格：' + (THEMES.find(t => t.id === state.themeId) || {}).name);
+  lines.push('');
+  lines.push('## 页面结构');
+  lines.push('');
+  lines.push('### home');
+  if (state.sections.length === 0) {
+    lines.push('- （空）');
+  } else {
+    state.sections.forEach((sec, i) => {
+      lines.push(`${i + 1}. ${modName(sec.moduleId)}（${modTech(sec.moduleId)} / 变体：${variantLabel(sec)}）`);
+    });
+  }
+  lines.push('');
+  lines.push('## 对 AI 的约束');
+  lines.push('');
+  lines.push('- 仅使用上述已选模块与变体，不得自行增加页面区块');
+  lines.push('- 仅使用上述主题风格的色彩、圆角与排版，保持视觉一致');
+  lines.push('- 按上述顺序搭建页面结构');
+
+  return {
+    json: JSON.stringify(json, null, 2),
+    md: lines.join('\n')
+  };
+}
+
+function openExport() {
+  document.getElementById('exportModal').classList.add('show');
+  renderExport();
+}
+
+function closeExport() {
+  document.getElementById('exportModal').classList.remove('show');
+}
+
+function switchTab(mode) {
+  exportMode = mode;
+  document.getElementById('tabMd').classList.toggle('active', mode === 'md');
+  document.getElementById('tabJson').classList.toggle('active', mode === 'json');
+  renderExport();
+}
+
+function renderExport() {
+  const spec = buildSpec();
+  document.getElementById('exportText').value = exportMode === 'md' ? spec.md : spec.json;
+}
+
+function copyExport() {
+  const text = document.getElementById('exportText').value;
+  navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板')).catch(() => {
+    document.getElementById('exportText').select();
+    document.execCommand('copy');
+    alert('已复制到剪贴板');
+  });
+}
+
+function downloadExport() {
+  const spec = buildSpec();
+  const isMd = exportMode === 'md';
+  const content = isMd ? spec.md : spec.json;
+  const filename = isMd ? 'spec.md' : 'spec.json';
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+init();
+</script>
+</body>
+</html>
