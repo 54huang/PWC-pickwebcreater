@@ -15,9 +15,9 @@
 
 ## 3. Codex 消费层（codex-integration）
 
-- [ ] 3.1 编写 `AGENTS.md`：声明当项目存在 `spec.json` / `spec.md` 时，Codex 优先读取并按单组装，不自行增加区块，遵循主题风格；验证：Codex 读 AGENTS.md 后按配置单约束生成
-- [ ] 3.2 在根 README 补充 Codex 消费方式与配置单对接说明；验证：文档描述的用法与实现一致
+- [x] 3.1 编写 `AGENTS.md`：声明当项目存在 `spec.json` / `spec.md` 时，Codex 优先读取并按单组装，不自行增加区块，遵循主题风格；验证：Codex 读 AGENTS.md 后按配置单约束生成
+- [x] 3.2 在根 README 补充 Codex 消费方式与配置单对接说明；验证：文档描述的用法与实现一致
 
 ## 4. 集成验证
 
-- [ ] 4.1 全流程验证：双击 `app/index.html`，完成"拖入 → 排序 → 换肤 → 导出"全流程，确认预览可滚动、spec.json 可被 JSON 解析、spec.md 内容完整
+- [x] 4.1 全流程验证：双击 `app/index.html`，完成"拖入 → 排序 → 换肤 → 导出"全流程，确认预览可滚动、spec.json 可被 JSON 解析、spec.md 内容完整
