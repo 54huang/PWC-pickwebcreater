@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>前端选品台 · 初始版本</title>
+<link rel="stylesheet" href="src/assets/styles.css">
+</head>
+<body>
+<div class="app">
+  <!-- 左栏：模块库 -->
+  <aside class="panel">
+    <div class="brand">前端选品台 <span class="tag">v0.1</span></div>
+    <div class="sub">把模块拖进右侧画布，像配车一样搭页面。</div>
+    <h2>页面模块</h2>
+    <div class="lib-grid" id="libGrid"></div>
+  </aside>
+
+  <!-- 中栏：画布 -->
+  <main class="canvas-wrap" id="canvasWrap">
+    <div class="canvas" id="canvas"></div>
+  </main>
+
+  <!-- 右栏：配置 -->
+  <aside class="panel right">
+    <h2>项目信息</h2>
+    <div class="field">
+      <label>项目名称</label>
+      <input id="projName" type="text" placeholder="例如：一家面包房的官网">
+    </div>
+    <div class="field">
+      <label>一句话用途</label>
+      <textarea id="projPurpose" rows="2" placeholder="这个网站是给谁用、要达到什么目的"></textarea>
+    </div>
+    <div class="field">
+      <label>技术栈</label>
+      <select id="stack">
+        <option value="纯 HTML + CSS + JS">纯 HTML + CSS + JS</option>
+        <option value="React + Tailwind">React + Tailwind</option>
+        <option value="Vue + Nuxt">Vue + Nuxt</option>
+        <option value="Next.js + Tailwind">Next.js + Tailwind</option>
+      </select>
+    </div>
+
+    <h2>主题风格</h2>
+    <div class="theme-grid" id="themeGrid"></div>
+
+    <h2 style="margin-top:18px;">导出配置单</h2>
+    <button class="btn-primary" onclick="PickWeb.openExport()">生成给 AI 的配置单</button>
+    <button class="btn-secondary" onclick="PickWeb.resetAll()">清空重来</button>
+    <div class="hint">
+      配置会保存在本地浏览器；导出的配置单交给 Codex 等 AI 作为约束上下文，减少猜测与 token 消耗。
+    </div>
+  </aside>
+</div>
+
+<!-- 抽屉（FAQ drawer 变体用） -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer-panel" id="drawerPanel">
+  <button class="close" id="drawerClose">✕</button>
+  <h3 id="drawerTitle"></h3>
+  <p id="drawerBody"></p>
+</div>
+
+<!-- 导出弹窗 -->
+<div class="modal" id="exportModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>给 AI 的配置单</h3>
+      <button class="close" onclick="PickWeb.closeExport()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button id="tabMd" class="active" onclick="PickWeb.switchTab('md')">spec.md（人机可读）</button>
+      <button id="tabJson" onclick="PickWeb.switchTab('json')">spec.json（机器可读）</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="exportText" readonly></textarea>
+    </div>
+    <div class="modal-foot">
+      <button onclick="PickWeb.copyExport()">复制</button>
+      <button class="primary" onclick="PickWeb.downloadExport()">下载文件</button>
+    </div>
+  </div>
+</div>
+
+<!-- 插入指示线（拖拽排序用） -->
+<div class="drop-indicator" id="dropIndicator"></div>
+
+<script src="src/data/modules.js"></script>
+<script src="src/data/themes.js"></script>
+<script src="src/core/state.js"></script>
+<script src="src/core/storage.js"></script>
+<script src="src/core/renderer.js"></script>
+<script src="src/core/dnd.js"></script>
+<script src="src/core/exporter.js"></script>
+<script src="src/core/main.js"></script>
+</body>
+</html>

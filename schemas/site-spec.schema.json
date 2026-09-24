@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/54huang/PWC-pickwebcreater/main/schemas/site-spec.schema.json",
+  "title": "PickWeb Site Spec",
+  "description": "前端选品台导出的配置单结构，交给 AI（Codex）作为约束上下文。",
+  "type": "object",
+  "required": ["site", "pages"],
+  "properties": {
+    "version": { "type": "string" },
+    "generator": { "type": "string" },
+    "site": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "purpose": { "type": "string" },
+        "stack": { "type": "string" },
+        "theme": { "type": "string" },
+        "themeName": { "type": "string" }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "slug"],
+        "properties": {
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "purpose": { "type": "string" },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["module"],
+              "properties": {
+                "module": { "type": "string" },
+                "name": { "type": "string" },
+                "tech": { "type": "string" },
+                "variant": { "type": "string" },
+                "variantLabel": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
